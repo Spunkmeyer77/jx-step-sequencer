@@ -57,7 +57,42 @@ namespace
     const juce::Colour deviceBg  = rgba (0.157f, 0.157f, 0.157f);
     const juce::Colour commentCol = rgba (1.0f, 1.0f, 1.0f, 0.6f);
 
-    const juce::Rectangle<float> screenRect { 6.0f, 4.0f, 388.0f, 96.0f };
+    juce::Rectangle<float> screenArea()
+    {
+        return JXStepSequencerEditor::designVariant == 3 ? juce::Rectangle<float> { 6.0f, 4.0f, 345.0f, 96.0f }
+                                                         : juce::Rectangle<float> { 6.0f, 4.0f, 388.0f, 96.0f };
+    }
+
+    // JX-3P panel colours (same as the Rest / Tie / Clear buttons)
+    const juce::Colour jxGreen = juce::Colour (65, 141, 116);
+    const juce::Colour jxBlue  = juce::Colour (74, 105, 183);
+    const juce::Colour jxRed   = juce::Colour (135, 43, 41);
+
+    // Three "/" stripes: green, blue, red. The blue one trails a thin line to the
+    // right and the red one turns into a horizontal bar, like on the JX-3P panel.
+    void drawStripeSet (juce::Graphics& g, juce::Rectangle<float> area, float thick, float gap,
+                        float slant, float rightEdge, bool trailLines)
+    {
+        const juce::Colour cols[] = { jxGreen, jxBlue, jxRed };
+        const float y0 = area.getY(), y1 = area.getBottom();
+        for (int i = 0; i < 3; ++i)
+        {
+            const float x = area.getX() + (float) i * (thick + gap);
+            juce::Path p;
+            p.startNewSubPath (x, y1);
+            p.lineTo (x + thick, y1);
+            p.lineTo (x + thick + slant, y0);
+            p.lineTo (x + slant, y0);
+            p.closeSubPath();
+            g.setColour (cols[i]);
+            g.fillPath (p);
+
+            if (trailLines && i == 1)
+                g.fillRect (juce::Rectangle<float>::leftTopRightBottom (x + thick + slant, y0, rightEdge, y0 + 1.2f));
+            if (trailLines && i == 2)
+                g.fillRect (juce::Rectangle<float>::leftTopRightBottom (x + slant, y0, rightEdge, y0 + thick * 0.75f));
+        }
+    }
     const juce::Rectangle<float> rateRect   { 48.0f, 134.0f, 124.0f, 20.0f };
     constexpr int rateHover = 100;
 }
@@ -100,6 +135,10 @@ JXStepSequencerEditor::JXStepSequencerEditor (JXStepSequencerProcessor& p)
           rgba (0.35f, 0.22f, 0.05f), rgba (0.55f, 0.35f, 0.08f), rgba (1.0f, 0.62f, 0.1f), rgba (1.0f, 0.85f, 0.5f), "MIDI",
           "Drag this onto Live's Arrangement (or a clip slot) to drop the sequence in as a MIDI clip. Click to save it as a .mid file instead." },
     };
+
+    if (designVariant == 2)          // HELP / MIDI move left, the stripes take the corner
+        for (auto& c : controls)
+            if (c.id == "help" || c.id == "midi") c.r = c.r.withX (322.0f).withWidth (30.0f);
 
     display = proc.getDisplay();
     shownRate = proc.getRateParam().getIndex();
@@ -268,7 +307,8 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
     g.fillAll (deviceBg);
     g.addTransform (juce::AffineTransform::scale (scale()));
 
-    paintScreen (g, screenRect);
+    paintScreen (g, screenArea());
+    paintStripes (g);
 
     for (const auto& c : controls) paintControl (g, c);
     paintRateTab (g);
@@ -281,6 +321,17 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
     label (g, "<",     190 + 3, 134 + 13, 10, commentCol);
     label (g, ">",     246 + 3, 134 + 13, 10, commentCol);
     label (g, "Erase", 288 + 3, 134 + 13, 10, commentCol);
+}
+
+void JXStepSequencerEditor::paintStripes (juce::Graphics& g) const
+{
+    switch (designVariant)
+    {
+        case 1:  drawStripeSet (g, { 323, 112, 34, 40 }, 5.0f, 3.0f, 12.0f, 356.0f, false); break;   // small badge between the buttons
+        case 2:  drawStripeSet (g, { 353, 106, 60, 70 }, 8.0f, 4.0f, 22.0f, 400.0f, false); break;   // bottom-right corner, runs off the edge
+        case 3:  drawStripeSet (g, { 356, -4, 90, 108 }, 11.0f, 5.0f, 44.0f, 400.0f, false); break;  // top-right corner, next to the screen
+        default: break;
+    }
 }
 
 void JXStepSequencerEditor::paintControl (juce::Graphics& g, const Control& c) const

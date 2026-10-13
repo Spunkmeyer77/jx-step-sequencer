@@ -25,6 +25,9 @@ public:
     static constexpr int baseWidth = 400;   // 357 in the M4L device, + a column for HELP / MIDI
     static constexpr int baseHeight = 169;
 
+    // Design preview switch for the corner stripes (0 = none). Used for mockups.
+    static inline int designVariant = 0;
+
 private:
     enum class Kind { Text, Round, Tab, Drag };
 
@@ -60,6 +63,7 @@ private:
     void paintScreen (juce::Graphics&, juce::Rectangle<float> area) const;
     void paintControl (juce::Graphics&, const Control&) const;
     void paintRateTab (juce::Graphics&) const;
+    void paintStripes (juce::Graphics&) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JXStepSequencerEditor)
 };
