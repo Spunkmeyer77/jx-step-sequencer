@@ -252,20 +252,6 @@ int main()
         p.setPlayHead (nullptr);
     });
 
-    for (int v = 1; v <= 3; ++v)
-    {
-        JXStepSequencerEditor::designVariant = v;
-        snapshot ((base + "/design_" + std::to_string (v) + ".png").c_str(), [&] (auto& p) {
-            feed (p, { {60,64,67}, {}, {62,65,69}, {}, {55,59,62,65}, {57,60,64} }, { JXStepSequencerProcessor::cmdTie, JXStepSequencerProcessor::cmdRest });
-            p.pushCommand (JXStepSequencerProcessor::cmdRec);
-            p.pushCommand (JXStepSequencerProcessor::cmdPlay);
-            FakeHead h; h.playing = true; p.setPlayHead (&h);
-            juce::AudioBuffer<float> a (2, 6000);
-            for (int b = 0; b < 3; ++b) { h.ppq = b * 0.25; juce::MidiBuffer m; p.processBlock (a, m); }
-            p.setPlayHead (nullptr);
-        });
-    }
-    JXStepSequencerEditor::designVariant = 0;
 
     std::cout << (failures == 0 ? "ALL PASSED\n" : "FAILURES: " + std::to_string (failures) + "\n");
     return failures == 0 ? 0 : 1;

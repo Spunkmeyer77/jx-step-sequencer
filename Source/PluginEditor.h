@@ -25,9 +25,6 @@ public:
     static constexpr int baseWidth = 400;   // 357 in the M4L device, + a column for HELP / MIDI
     static constexpr int baseHeight = 169;
 
-    // Design preview switch for the corner stripes (0 = none). Used for mockups.
-    static inline int designVariant = 0;
-
 private:
     enum class Kind { Text, Round, Tab, Drag };
 
