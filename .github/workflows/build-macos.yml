@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write          # needed to publish releases
+
 jobs:
   build:
     runs-on: macos-14
@@ -22,7 +25,42 @@ jobs:
           codesign --force --deep --sign - "JX Step Sequencer.vst3"
           ditto -c -k --keepParent "JX Step Sequencer.vst3" "$GITHUB_WORKSPACE/JX-Step-Sequencer-VST3-macOS.zip"
 
+      - name: Build installer (.pkg)
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          ROOT="$RUNNER_TEMP/pkgroot"
+          mkdir -p "$ROOT/Library/Audio/Plug-Ins/VST3"
+          cp -R "build/JXStepSequencer_artefacts/Release/VST3/JX Step Sequencer.vst3" "$ROOT/Library/Audio/Plug-Ins/VST3/"
+
+          # Always install to the VST3 folder; never "update" a copy found elsewhere on the Mac
+          pkgbuild --analyze --root "$ROOT" "$RUNNER_TEMP/components.plist"
+          plutil -replace 0.BundleIsRelocatable -bool NO "$RUNNER_TEMP/components.plist"
+
+          pkgbuild --root "$ROOT" \
+                   --component-plist "$RUNNER_TEMP/components.plist" \
+                   --identifier com.ticcoross.jxstepsequencer.vst3 \
+                   --version "$VERSION" \
+                   --install-location / \
+                   "$RUNNER_TEMP/component.pkg"
+
+          productbuild --package "$RUNNER_TEMP/component.pkg" "$GITHUB_WORKSPACE/JX-Step-Sequencer-Installer.pkg"
+          pkgutil --payload-files "$GITHUB_WORKSPACE/JX-Step-Sequencer-Installer.pkg" | head -5
+
       - uses: actions/upload-artifact@v4
         with:
           name: JX-Step-Sequencer-VST3-macOS
-          path: JX-Step-Sequencer-VST3-macOS.zip
+          path: |
+            JX-Step-Sequencer-VST3-macOS.zip
+            JX-Step-Sequencer-Installer.pkg
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          gh release create "v$VERSION" \
+            JX-Step-Sequencer-Installer.pkg JX-Step-Sequencer-VST3-macOS.zip \
+            --title "JX Step Sequencer $VERSION" \
+            --notes "Built from ${GITHUB_SHA::7}. Download JX-Step-Sequencer-Installer.pkg and double-click it." \
+            --latest
