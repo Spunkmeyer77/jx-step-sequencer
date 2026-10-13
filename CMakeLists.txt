@@ -26,9 +26,9 @@ endif()
 option(JX_COPY_PLUGIN "Copy the VST3 into the system plug-in folder after building" ON)
 
 juce_add_plugin(JXStepSequencer
-    COMPANY_NAME "Krito"
-    BUNDLE_ID "com.krito.jxstepsequencer"
-    PLUGIN_MANUFACTURER_CODE Krto
+    COMPANY_NAME "Ticco Ross"
+    BUNDLE_ID "com.ticcoross.jxstepsequencer"
+    PLUGIN_MANUFACTURER_CODE Tcrs
     PLUGIN_CODE JxSq
     PRODUCT_NAME "JX Step Sequencer"
     DESCRIPTION "JX-3P style polyphonic step sequencer"
