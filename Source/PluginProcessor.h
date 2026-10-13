@@ -47,6 +47,10 @@ public:
     juce::AudioParameterChoice& getRateParam() { return *rate; }
 
     float editorScale = 1.5f;        // remembered with the project
+    std::atomic<bool> showHelp { true };   // HELP button: hover tooltips on/off, remembered with the project
+
+    std::vector<jx::Step> getSequence() const;   // copy of the steps, for MIDI export
+    double getQuartersPerStep() const { return quartersPerStep[juce::jlimit (0, 3, rate->getIndex())]; }
 
     // Steps per quarter note for each Rate choice: 1/4, 1/8, 1/16, 1/32
     static constexpr double quartersPerStep[4] = { 1.0, 0.5, 0.25, 0.125 };

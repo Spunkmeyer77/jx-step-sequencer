@@ -16,6 +16,11 @@ It works like the M4L device:
 - The sequence and Rate are saved with your project. The keyboard input is
   passed through to the output as well.
 - The window can be resized from the bottom-right corner.
+- **HELP** turns the hover help texts on or off.
+- **MIDI**: drag it onto Live's Arrangement (or a clip slot, or any DAW track) to drop
+  one pass of the sequence in as a MIDI clip, at the current Rate. Ties become longer
+  notes, rests become gaps. Click it instead to save a `.mid` file to
+  `~/Music/JX Step Sequencer/` and show it in Finder.
 
 The sequencer logic is in `Source/SequencerEngine.h`, a direct port of `jxseq.js`.
 The screen is a port of `jxscreen.js`.

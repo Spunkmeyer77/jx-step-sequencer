@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "MidiExport.h"
 
 namespace
 {
@@ -56,7 +57,7 @@ namespace
     const juce::Colour deviceBg  = rgba (0.157f, 0.157f, 0.157f);
     const juce::Colour commentCol = rgba (1.0f, 1.0f, 1.0f, 0.6f);
 
-    const juce::Rectangle<float> screenRect { 6.0f, 4.0f, 345.0f, 96.0f };
+    const juce::Rectangle<float> screenRect { 6.0f, 4.0f, 388.0f, 96.0f };
     const juce::Rectangle<float> rateRect   { 48.0f, 134.0f, 124.0f, 20.0f };
     constexpr int rateHover = 100;
 }
@@ -90,6 +91,14 @@ JXStepSequencerEditor::JXStepSequencerEditor (JXStepSequencerProcessor& p)
         { "erase", Kind::Round, { 268, 137, 15, 15 }, C::cmdErase,
           defaultBtn, mint, {}, {}, "",
           "Blank the selected step (it becomes a rest). While recording it removes the last step you entered." },
+
+        // added in the VST3 version
+        { "help",  Kind::Text,  { 358, 110, 34, 17 }, (C::Command) 0,
+          rgba (0.22f, 0.22f, 0.22f), rgba (1.0f, 0.62f, 0.1f), rgba (0.7f, 0.7f, 0.7f), rgba (0.12f, 0.07f, 0.02f), "HELP",
+          "Show or hide these help texts." },
+        { "midi",  Kind::Drag,  { 358, 136, 34, 17 }, (C::Command) 0,
+          rgba (0.35f, 0.22f, 0.05f), rgba (0.55f, 0.35f, 0.08f), rgba (1.0f, 0.62f, 0.1f), rgba (1.0f, 0.85f, 0.5f), "MIDI",
+          "Drag this onto Live's Arrangement (or a clip slot) to drop the sequence in as a MIDI clip. Click to save it as a .mid file instead." },
     };
 
     display = proc.getDisplay();
@@ -170,6 +179,20 @@ void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
     const int i = findControl (p);
     if (i < 0 || i == rateHover) return;
     auto& c = controls[(size_t) i];
+    if (c.id == "help")
+    {
+        proc.showHelp = ! proc.showHelp.load();
+        if (! proc.showHelp) tooltipWindow.hideTip();
+        repaint();
+        return;
+    }
+    if (c.id == "midi")
+    {
+        pressed = i;
+        dragStarted = false;
+        repaint();
+        return;
+    }
     proc.pushCommand (c.cmd);
     if (c.kind == Kind::Round) c.flashUntil = juce::Time::getMillisecondCounterHiRes() + 150.0;
     repaint();
@@ -181,7 +204,10 @@ void JXStepSequencerEditor::mouseMove (const juce::MouseEvent& e)
     if (i != hover)
     {
         hover = i;
-        setMouseCursor (i >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        const bool overMidi = i >= 0 && i < (int) controls.size() && controls[(size_t) i].id == "midi";
+        setMouseCursor (overMidi ? juce::MouseCursor::DraggingHandCursor
+                        : i >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        repaint();
     }
 }
 
@@ -189,10 +215,47 @@ void JXStepSequencerEditor::mouseExit (const juce::MouseEvent&)
 {
     hover = -1;
     setMouseCursor (juce::MouseCursor::NormalCursor);
+    repaint();
+}
+
+juce::File JXStepSequencerEditor::writeSequenceTo (const juce::File& folder) const
+{
+    const auto steps = proc.getSequence();
+    if (steps.empty()) return {};
+    folder.createDirectory();
+    const auto f = folder.getChildFile ("JX Sequence " + juce::Time::getCurrentTime().formatted ("%Y-%m-%d %H-%M-%S") + ".mid");
+    return jx::writeMidiFile (f, steps, proc.getQuartersPerStep()) ? f : juce::File();
+}
+
+void JXStepSequencerEditor::mouseDrag (const juce::MouseEvent& e)
+{
+    if (pressed < 0 || controls[(size_t) pressed].id != "midi" || dragStarted) return;
+    if (e.getDistanceFromDragStart() < 4) return;
+    dragStarted = true;
+
+    const auto f = writeSequenceTo (juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                        .getChildFile ("JX Step Sequencer"));
+    if (f.existsAsFile())
+        juce::DragAndDropContainer::performExternalDragDropOfFiles ({ f.getFullPathName() }, false, this);
+}
+
+void JXStepSequencerEditor::mouseUp (const juce::MouseEvent& e)
+{
+    if (pressed >= 0 && controls[(size_t) pressed].id == "midi" && ! dragStarted
+        && controls[(size_t) pressed].r.contains (toDevice (e.position)))
+    {
+        const auto f = writeSequenceTo (juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                                            .getChildFile ("JX Step Sequencer"));
+        if (f.existsAsFile()) f.revealToUser();
+    }
+    pressed = -1;
+    dragStarted = false;
+    repaint();
 }
 
 juce::String JXStepSequencerEditor::getTooltip()
 {
+    if (! proc.showHelp) return {};
     if (hover == rateHover) return "Length of one step.";
     if (hover >= 0 && hover < (int) controls.size()) return controls[(size_t) hover].hint;
     return {};
@@ -222,9 +285,23 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
 
 void JXStepSequencerEditor::paintControl (juce::Graphics& g, const Control& c) const
 {
+    if (c.kind == Kind::Drag)            // MIDI drag-out handle
+    {
+        const bool empty = display.count == 0;
+        const bool lit = ! empty && (hover >= 0 && &controls[(size_t) hover] == &c);
+        g.setColour ((lit ? c.bgOn : c.bg).withMultipliedAlpha (empty ? 0.4f : 1.0f));
+        g.fillRoundedRectangle (c.r, 6.0f);
+        g.setColour (rgba (0, 0, 0, 0.35f));
+        g.drawRoundedRectangle (c.r.reduced (0.5f), 6.0f, 1.0f);
+        label (g, c.label, c.r.getCentreX(), c.r.getY() + 12.0f, 10,
+               (lit ? c.textOn : c.text).withMultipliedAlpha (empty ? 0.4f : 1.0f), Align::Center);
+        return;
+    }
+
     if (c.kind == Kind::Text)            // live.text toggle
     {
-        const bool on = (c.cmd == JXStepSequencerProcessor::cmdRec) ? display.rec : display.play;
+        const bool on = c.id == "help" ? proc.showHelp.load()
+                      : (c.cmd == JXStepSequencerProcessor::cmdRec) ? display.rec : display.play;
         g.setColour (on ? c.bgOn : c.bg);
         g.fillRoundedRectangle (c.r, 6.0f);
         g.setColour (rgba (0, 0, 0, 0.35f));

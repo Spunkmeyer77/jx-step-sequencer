@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "MidiExport.h"
 #include <iostream>
 
 static int failures = 0;
@@ -180,10 +181,45 @@ static void snapshot (const char* path, std::function<void (JXStepSequencerProce
     ed.reset();
 }
 
+static void midiExportTests()
+{
+    // C-E chord, tie, rest, D, D (repeated note must retrigger)
+    std::vector<jx::Step> steps (5);
+    steps[0].t = 'n'; steps[0].numNotes = 2; steps[0].pitch = { 60, 64 }; steps[0].vel = { 100, 90 };
+    steps[1].t = 't';
+    steps[2].t = 'r';
+    steps[3].t = 'n'; steps[3].numNotes = 1; steps[3].pitch = { 62 }; steps[3].vel = { 80 };
+    steps[4] = steps[3];
+
+    auto file = jx::buildMidiFile (steps, 0.25);            // 1/16 = 240 ticks
+    CHECK (file.getTimeFormat() == 960);
+    const auto* t = file.getTrack (0);
+    std::vector<std::string> ev;
+    for (int i = 0; i < t->getNumEvents(); ++i)
+    {
+        const auto& m = t->getEventPointer (i)->message;
+        if (m.isNoteOn()) ev.push_back ("on " + std::to_string (m.getNoteNumber()) + "@" + std::to_string ((int) m.getTimeStamp()));
+        else if (m.isNoteOff()) ev.push_back ("off " + std::to_string (m.getNoteNumber()) + "@" + std::to_string ((int) m.getTimeStamp()));
+    }
+    std::string all; for (auto& e : ev) all += e + ",";
+    CHECK (all == "on 60@0,on 64@0,off 60@480,off 64@480,on 62@720,off 62@960,on 62@960,off 62@1200,");
+    if (all != "on 60@0,on 64@0,off 60@480,off 64@480,on 62@720,off 62@960,on 62@960,off 62@1200,") std::cout << all << "\n";
+
+    // round trip through a real file
+    auto f = juce::File::createTempFile (".mid");
+    CHECK (jx::writeMidiFile (f, steps, 0.25));
+    juce::FileInputStream in (f);
+    juce::MidiFile back; CHECK (back.readFrom (in));
+    CHECK (back.getNumTracks() == 1);
+    f.deleteFile();
+    std::cout << "midi export tests done\n";
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
     engineTests();
+    midiExportTests();
     processorTests();
 
     auto feed = [] (JXStepSequencerProcessor& p, std::initializer_list<std::vector<int>> chords, std::vector<int> cmds)

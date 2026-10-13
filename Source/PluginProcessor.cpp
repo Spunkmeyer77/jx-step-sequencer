@@ -155,6 +155,15 @@ jx::DisplayState JXStepSequencerProcessor::getDisplay() const
     return engine.getDisplay();
 }
 
+std::vector<jx::Step> JXStepSequencerProcessor::getSequence() const
+{
+    std::vector<jx::Step> steps;
+    steps.reserve (jx::MAXSTEPS);
+    const juce::SpinLock::ScopedLockType lock (engineLock);
+    for (int i = 0; i < engine.getNumSteps(); ++i) steps.push_back (engine.getStep (i));
+    return steps;
+}
+
 // ---- state: replaces the coll @embed 1 ----
 
 void JXStepSequencerProcessor::getStateInformation (juce::MemoryBlock& destData)
@@ -163,6 +172,7 @@ void JXStepSequencerProcessor::getStateInformation (juce::MemoryBlock& destData)
     root.setAttribute ("version", 1);
     root.setAttribute ("rate", rate->getIndex());
     root.setAttribute ("scale", (double) editorScale);
+    root.setAttribute ("help", showHelp.load());
 
     auto* seq = root.createNewChildElement ("Sequence");
     {
@@ -188,6 +198,7 @@ void JXStepSequencerProcessor::setStateInformation (const void* data, int sizeIn
 
     *rate = juce::jlimit (0, 3, xml->getIntAttribute ("rate", 2));
     editorScale = (float) juce::jlimit (1.0, 3.0, xml->getDoubleAttribute ("scale", 1.5));
+    showHelp = xml->getBoolAttribute ("help", true);
 
     std::vector<jx::Step> loaded;
     if (auto* seq = xml->getChildByName ("Sequence"))
