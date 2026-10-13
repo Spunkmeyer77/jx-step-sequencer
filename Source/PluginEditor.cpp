@@ -58,6 +58,37 @@ namespace
     const juce::Colour commentCol = rgba (1.0f, 1.0f, 1.0f, 0.6f);
 
     const juce::Rectangle<float> screenRect { 6.0f, 4.0f, 388.0f, 96.0f };
+
+    // JX-3P panel colours (same as the Rest / Tie / Clear buttons)
+    const juce::Colour jxGreen = juce::Colour (65, 141, 116);
+    const juce::Colour jxBlue  = juce::Colour (74, 105, 183);
+    const juce::Colour jxRed   = juce::Colour (135, 43, 41);
+
+    // Three "/" stripes: green, blue, red. The blue one trails a thin line to the
+    // right and the red one turns into a horizontal bar, like on the JX-3P panel.
+    void drawStripeSet (juce::Graphics& g, juce::Rectangle<float> area, float thick, float gap,
+                        float slant, float rightEdge, bool trailLines)
+    {
+        const juce::Colour cols[] = { jxGreen, jxBlue, jxRed };
+        const float y0 = area.getY(), y1 = area.getBottom();
+        for (int i = 0; i < 3; ++i)
+        {
+            const float x = area.getX() + (float) i * (thick + gap);
+            juce::Path p;
+            p.startNewSubPath (x, y1);
+            p.lineTo (x + thick, y1);
+            p.lineTo (x + thick + slant, y0);
+            p.lineTo (x + slant, y0);
+            p.closeSubPath();
+            g.setColour (cols[i]);
+            g.fillPath (p);
+
+            if (trailLines && i == 1)
+                g.fillRect (juce::Rectangle<float>::leftTopRightBottom (x + thick + slant, y0, rightEdge, y0 + 1.2f));
+            if (trailLines && i == 2)
+                g.fillRect (juce::Rectangle<float>::leftTopRightBottom (x + slant, y0, rightEdge, y0 + thick * 0.75f));
+        }
+    }
     const juce::Rectangle<float> rateRect   { 48.0f, 134.0f, 124.0f, 20.0f };
     constexpr int rateHover = 100;
 }
@@ -269,6 +300,7 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
     g.addTransform (juce::AffineTransform::scale (scale()));
 
     paintScreen (g, screenRect);
+    paintStripes (g);
 
     for (const auto& c : controls) paintControl (g, c);
     paintRateTab (g);
@@ -281,6 +313,12 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
     label (g, "<",     190 + 3, 134 + 13, 10, commentCol);
     label (g, ">",     246 + 3, 134 + 13, 10, commentCol);
     label (g, "Erase", 288 + 3, 134 + 13, 10, commentCol);
+}
+
+void JXStepSequencerEditor::paintStripes (juce::Graphics& g) const
+{
+    // JX-3P stripes, small badge between Clear/Erase and HELP/MIDI
+    drawStripeSet (g, { 323, 112, 34, 40 }, 5.0f, 3.0f, 12.0f, 356.0f, false);
 }
 
 void JXStepSequencerEditor::paintControl (juce::Graphics& g, const Control& c) const

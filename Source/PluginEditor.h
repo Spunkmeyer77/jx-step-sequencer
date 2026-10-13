@@ -60,6 +60,7 @@ private:
     void paintScreen (juce::Graphics&, juce::Rectangle<float> area) const;
     void paintControl (juce::Graphics&, const Control&) const;
     void paintRateTab (juce::Graphics&) const;
+    void paintStripes (juce::Graphics&) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JXStepSequencerEditor)
 };
