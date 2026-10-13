@@ -1,0 +1,10 @@
+# Test harness (not needed to build the plugin).
+cmake_minimum_required(VERSION 3.22)
+project(JXTests VERSION 1.0.0)
+set(CMAKE_CXX_STANDARD 17)
+add_subdirectory(${JUCE_DIR} JUCE)
+juce_add_console_app(JXTests)
+target_sources(JXTests PRIVATE Tests.cpp ../Source/PluginProcessor.cpp ../Source/PluginEditor.cpp)
+target_include_directories(JXTests PRIVATE ../Source)
+target_compile_definitions(JXTests PRIVATE JucePlugin_Name="JX Step Sequencer" JUCE_USE_CURL=0 JUCE_WEB_BROWSER=0)
+target_link_libraries(JXTests PRIVATE juce::juce_audio_processors juce::juce_gui_basics)

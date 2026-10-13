@@ -1,0 +1,28 @@
+name: Build macOS VST3
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJX_COPY_PLUGIN=OFF
+
+      - name: "Build (universal: Apple Silicon + Intel)"
+        run: cmake --build build --config Release -j 4
+
+      - name: Sign (ad-hoc) and zip
+        run: |
+          cd "build/JXStepSequencer_artefacts/Release/VST3"
+          codesign --force --deep --sign - "JX Step Sequencer.vst3"
+          ditto -c -k --keepParent "JX Step Sequencer.vst3" "$GITHUB_WORKSPACE/JX-Step-Sequencer-VST3-macOS.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JX-Step-Sequencer-VST3-macOS
+          path: JX-Step-Sequencer-VST3-macOS.zip
