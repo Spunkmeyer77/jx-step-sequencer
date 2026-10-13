@@ -176,7 +176,7 @@ static void snapshot (const char* path, std::function<void (JXStepSequencerProce
     proc.setPlayHead (&head); proc.prepareToPlay (48000, 480);
     setup (proc);
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
-    auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+    auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 3.0f);
     juce::File f (path); f.deleteFile(); juce::FileOutputStream os (f); juce::PNGImageFormat().writeImageToStream (img, os);
     ed.reset();
 }
