@@ -1,6 +1,8 @@
 #include "PluginEditor.h"
 #include "MidiExport.h"
 
+#include <algorithm>
+
 namespace
 {
     juce::Colour rgba (float r, float g, float b, float a = 1.0f)
@@ -132,6 +134,11 @@ JXStepSequencerEditor::JXStepSequencerEditor (JXStepSequencerProcessor& p)
           "Drag this onto Live's Arrangement (or a clip slot) to drop the sequence in as a MIDI clip. Click to save it as a .mid file instead." },
     };
 
+    if (amxdLook)
+        controls.erase (std::remove_if (controls.begin(), controls.end(),
+                                        [] (const Control& c) { return c.id == "help" || c.id == "midi"; }),
+                        controls.end());
+
     display = proc.getDisplay();
     shownRate = proc.getRateParam().getIndex();
 
@@ -139,14 +146,14 @@ JXStepSequencerEditor::JXStepSequencerEditor (JXStepSequencerProcessor& p)
     setResizeLimits (baseWidth, baseHeight, baseWidth * 3, baseHeight * 3);
     if (auto* c = getConstrainer())
         c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
-    setSize (juce::roundToInt (baseWidth * proc.editorScale), juce::roundToInt (baseHeight * proc.editorScale));
+    setSize (juce::roundToInt ((amxdLook ? 357 : baseWidth) * proc.editorScale), juce::roundToInt (baseHeight * proc.editorScale));
 
     startTimerHz (30);
 }
 
 float JXStepSequencerEditor::scale() const
 {
-    return (float) getWidth() / (float) baseWidth;
+    return (float) getHeight() / (float) baseHeight;
 }
 
 juce::Point<float> JXStepSequencerEditor::toDevice (juce::Point<float> p) const
@@ -299,8 +306,8 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
     g.fillAll (deviceBg);
     g.addTransform (juce::AffineTransform::scale (scale()));
 
-    paintScreen (g, screenRect);
-    paintStripes (g);
+    paintScreen (g, amxdLook ? screenRect.withWidth (345.0f) : screenRect);
+    if (! amxdLook) paintStripes (g);
 
     for (const auto& c : controls) paintControl (g, c);
     paintRateTab (g);

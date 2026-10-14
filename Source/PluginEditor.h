@@ -25,6 +25,9 @@ public:
     static constexpr int baseWidth = 400;   // 357 in the M4L device, + a column for HELP / MIDI
     static constexpr int baseHeight = 169;
 
+    // Draws the original Max for Live layout (357 wide, no HELP/MIDI, no stripes). For product images.
+    static inline bool amxdLook = false;
+
 private:
     enum class Kind { Text, Round, Tab, Drag };
 

@@ -253,6 +253,19 @@ int main()
     });
 
 
+    JXStepSequencerEditor::amxdLook = true;
+    snapshot ((base + "/amxd_device.png").c_str(), [&] (auto& p) {
+        feed (p, { {48,55,60,64}, {}, {53,57,60,65}, {}, {55,59,62,67}, {57,60,64,69}, {50,57,62,65}, {}, {52,55,59,64}, {55,59,62,65} },
+              { JXStepSequencerProcessor::cmdTie, JXStepSequencerProcessor::cmdRest, JXStepSequencerProcessor::cmdTie });
+        p.pushCommand (JXStepSequencerProcessor::cmdRec);
+        p.pushCommand (JXStepSequencerProcessor::cmdPlay);
+        FakeHead h; h.playing = true; p.setPlayHead (&h);
+        juce::AudioBuffer<float> a (2, 6000);
+        for (int b = 0; b < 5; ++b) { h.ppq = b * 0.25; juce::MidiBuffer m; p.processBlock (a, m); }
+        p.setPlayHead (nullptr);
+    });
+    JXStepSequencerEditor::amxdLook = false;
+
     std::cout << (failures == 0 ? "ALL PASSED\n" : "FAILURES: " + std::to_string (failures) + "\n");
     return failures == 0 ? 0 : 1;
 }
