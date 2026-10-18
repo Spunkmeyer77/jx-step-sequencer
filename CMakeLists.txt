@@ -23,16 +23,37 @@ else()
     FetchContent_MakeAvailable(JUCE)
 endif()
 
-option(JX_COPY_PLUGIN "Copy the VST3 into the system plug-in folder after building" ON)
+option(JX_COPY_PLUGIN "Copy the plugins into the system plug-in folders after building" ON)
 
+# Shared settings for every plugin target
+function(jx_setup target)
+    target_sources(${target} PRIVATE
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp)
+    target_compile_definitions(${target} PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_DISPLAY_SPLASH_SCREEN=0)
+    target_link_libraries(${target}
+        PRIVATE
+            juce::juce_audio_processors
+            juce::juce_gui_basics
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_lto_flags
+            juce::juce_recommended_warning_flags)
+endfunction()
+
+# VST3 (macOS, Windows, Linux): an instrument with MIDI out, so Ableton Live can load it
 juce_add_plugin(JXStepSequencer
     COMPANY_NAME "Ticco Ross"
     BUNDLE_ID "com.ticcoross.jxstepsequencer"
     PLUGIN_MANUFACTURER_CODE Tcrs
     PLUGIN_CODE JxSq
     PRODUCT_NAME "JX Step Sequencer"
-    DESCRIPTION "JX-3P style polyphonic step sequencer"
-    IS_SYNTH TRUE                 # an instrument, so Ableton Live can load it
+    DESCRIPTION "Polyphonic chord step sequencer"
+    IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
     IS_MIDI_EFFECT FALSE
@@ -40,23 +61,23 @@ juce_add_plugin(JXStepSequencer
     VST3_CATEGORIES Instrument Generator
     COPY_PLUGIN_AFTER_BUILD ${JX_COPY_PLUGIN}
     FORMATS VST3)
+jx_setup(JXStepSequencer)
 
-target_sources(JXStepSequencer PRIVATE
-    Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp)
-
-target_compile_definitions(JXStepSequencer PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0)
-
-target_link_libraries(JXStepSequencer
-    PRIVATE
-        juce::juce_audio_processors
-        juce::juce_gui_basics
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
-
+# Audio Unit (macOS only): a MIDI FX, for the MIDI FX slot in Logic Pro / MainStage
+if(APPLE)
+    juce_add_plugin(JXStepSequencerAU
+        COMPANY_NAME "Ticco Ross"
+        BUNDLE_ID "com.ticcoross.jxstepsequencer.au"
+        PLUGIN_MANUFACTURER_CODE Tcrs
+        PLUGIN_CODE JxSq
+        PRODUCT_NAME "JX Step Sequencer"
+        DESCRIPTION "Polyphonic chord step sequencer"
+        IS_SYNTH FALSE
+        NEEDS_MIDI_INPUT TRUE
+        NEEDS_MIDI_OUTPUT TRUE
+        IS_MIDI_EFFECT TRUE
+        EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+        COPY_PLUGIN_AFTER_BUILD ${JX_COPY_PLUGIN}
+        FORMATS AU)
+    jx_setup(JXStepSequencerAU)
+endif()

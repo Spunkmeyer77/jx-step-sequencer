@@ -25,7 +25,11 @@ namespace
 }
 
 JXStepSequencerProcessor::JXStepSequencerProcessor()
+#if JucePlugin_IsMidiEffect
+    : AudioProcessor (BusesProperties())          // AU MIDI FX (Logic): MIDI only, no audio
+#else
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
+#endif
 {
     addParameter (rate = new juce::AudioParameterChoice (juce::ParameterID { "rate", 1 }, "Rate",
                                                          juce::StringArray { "1/4", "1/8", "1/16", "1/32" }, 2));
@@ -38,6 +42,10 @@ JXStepSequencerProcessor::JXStepSequencerProcessor()
 
 bool JXStepSequencerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
+   #if JucePlugin_IsMidiEffect
+    juce::ignoreUnused (layouts);
+    return true;
+   #endif
     const auto out = layouts.getMainOutputChannelSet();
     return out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
 }
