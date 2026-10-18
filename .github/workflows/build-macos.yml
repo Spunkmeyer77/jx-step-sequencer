@@ -52,6 +52,7 @@ jobs:
           path: |
             JX-Step-Sequencer-VST3-macOS.zip
             JX-Step-Sequencer-Installer.pkg
+            docs/JX-Step-Sequencer-Manual.pdf
 
       - name: Publish release
         if: github.ref == 'refs/heads/main'
@@ -60,7 +61,7 @@ jobs:
         run: |
           VERSION="1.0.${{ github.run_number }}"
           gh release create "v$VERSION" \
-            JX-Step-Sequencer-Installer.pkg JX-Step-Sequencer-VST3-macOS.zip \
+            JX-Step-Sequencer-Installer.pkg JX-Step-Sequencer-VST3-macOS.zip docs/JX-Step-Sequencer-Manual.pdf \
             --title "JX Step Sequencer $VERSION" \
-            --notes "Built from ${GITHUB_SHA::7}. Download JX-Step-Sequencer-Installer.pkg and double-click it." \
+            --notes "Built from ${GITHUB_SHA::7}. Download JX-Step-Sequencer-Installer.pkg and double-click it. The manual is JX-Step-Sequencer-Manual.pdf." \
             --latest

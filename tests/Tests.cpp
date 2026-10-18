@@ -167,6 +167,21 @@ static void processorTests()
         for (auto md : m) if (md.getMessage().isNoteOn()) count++;
     }
     CHECK (count == 8);
+    // MIDI-mapped trigger parameters: press = one command, release does nothing
+    {
+        JXStepSequencerProcessor p4; FakeHead h4; h4.playing = false; p4.setPlayHead (&h4);
+        p4.prepareToPlay (sr, bs); juce::AudioBuffer<float> a4 (2, bs);
+        auto* recParam = p4.getParameters()[1];
+        CHECK (recParam->getName (20) == "REC");
+        recParam->setValue (1.0f); { juce::MidiBuffer m; p4.processBlock (a4, m); }
+        CHECK (p4.getDisplay().rec);
+        { juce::MidiBuffer m; p4.processBlock (a4, m); }
+        CHECK (p4.getDisplay().rec);                 // held: no second toggle
+        recParam->setValue (0.0f); { juce::MidiBuffer m; p4.processBlock (a4, m); }
+        CHECK (p4.getDisplay().rec);
+        recParam->setValue (1.0f); { juce::MidiBuffer m; p4.processBlock (a4, m); }
+        CHECK (! p4.getDisplay().rec);               // second press toggles off
+    }
     std::cout << "processor tests done\n";
 }
 

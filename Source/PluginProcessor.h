@@ -60,6 +60,12 @@ private:
     mutable juce::SpinLock engineLock;
     juce::AudioParameterChoice* rate = nullptr;
 
+    // MIDI-mappable buttons: each is a host parameter; a press (value going above
+    // half) triggers the command, like clicking the button on the panel.
+    static constexpr int numTriggers = 8;
+    std::array<juce::AudioParameterBool*, numTriggers> triggers {};
+    std::array<bool, numTriggers> triggerWasOn {};
+
     juce::AbstractFifo commandFifo { 128 };
     std::array<int, 128> commandBuffer {};
 

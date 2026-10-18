@@ -29,6 +29,11 @@ JXStepSequencerProcessor::JXStepSequencerProcessor()
 {
     addParameter (rate = new juce::AudioParameterChoice (juce::ParameterID { "rate", 1 }, "Rate",
                                                          juce::StringArray { "1/4", "1/8", "1/16", "1/32" }, 2));
+
+    const char* ids[]   = { "rec", "play", "rest", "tie", "clear", "prev", "next", "erase" };
+    const char* names[] = { "REC", "PLAY", "Rest", "Tie", "Clear", "Previous step", "Next step", "Erase" };
+    for (int i = 0; i < numTriggers; ++i)
+        addParameter (triggers[(size_t) i] = new juce::AudioParameterBool (juce::ParameterID { ids[i], 1 }, names[i], false));
 }
 
 bool JXStepSequencerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -108,6 +113,14 @@ void JXStepSequencerProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         const auto scope = commandFifo.read (commandFifo.getNumReady());
         for (int i = 0; i < scope.blockSize1; ++i) runCommand (commandBuffer[(size_t) (scope.startIndex1 + i)]);
         for (int i = 0; i < scope.blockSize2; ++i) runCommand (commandBuffer[(size_t) (scope.startIndex2 + i)]);
+    }
+
+    // ---- MIDI-mapped buttons: a press triggers the same command as a click ----
+    for (int i = 0; i < numTriggers; ++i)
+    {
+        const bool on = triggers[(size_t) i]->get();
+        if (on && ! triggerWasOn[(size_t) i]) runCommand (cmdRec + i);
+        triggerWasOn[(size_t) i] = on;
     }
 
     // ---- clock ticks that fall inside this block, on the Rate grid ----
