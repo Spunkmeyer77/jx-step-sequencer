@@ -315,7 +315,7 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
 
     // maker + version, quiet, bottom-left
     if (! amxdLook)
-        label (g, "TICCO ROSS   v" JX_VERSION_STRING, 12, 165, 7.5f, rgba (1, 1, 1, 0.32f));
+        label (g, "v" JX_VERSION_STRING, 12, 165, 7.5f, rgba (1, 1, 1, 0.32f));
 
     for (const auto& c : controls) paintControl (g, c);
     paintRateTab (g);
