@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(JXStepSequencer VERSION 1.0.0)
+# Build number: set by GitHub (run number) so the plugin, the UI and the release share one version
+set(JX_BUILD_NUMBER "0" CACHE STRING "Build number, the last part of the version")
+project(JXStepSequencer VERSION 1.0.${JX_BUILD_NUMBER})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

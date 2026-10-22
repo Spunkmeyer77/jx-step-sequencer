@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJX_COPY_PLUGIN=OFF
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJX_COPY_PLUGIN=OFF -DJX_BUILD_NUMBER=${{ github.run_number }}
 
       - name: "Build VST3 + AU (universal: Apple Silicon + Intel)"
         run: cmake --build build --config Release -j 4
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -B build -DJX_COPY_PLUGIN=OFF
+        run: cmake -B build -DJX_COPY_PLUGIN=OFF -DJX_BUILD_NUMBER=${{ github.run_number }}
 
       - name: Build VST3
         run: cmake --build build --config Release
@@ -87,7 +87,7 @@ jobs:
             libxcursor-dev libfreetype6-dev libfontconfig1-dev
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJX_COPY_PLUGIN=OFF
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJX_COPY_PLUGIN=OFF -DJX_BUILD_NUMBER=${{ github.run_number }}
 
       - name: Build VST3
         run: cmake --build build --config Release -j 4
