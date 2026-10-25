@@ -187,6 +187,15 @@ public:
     }
 
     void stepnext() { moveSel (1); }
+
+    void selectStep (int idx)        // 1-based; clicking a step cell on the screen
+    {
+        if (writing || idx < 1 || idx > numSteps) return;
+        if (editing) { editing = false; resetEntry(); }
+        sel = idx;
+        if (! playing) showStepInfo (steps[(size_t) sel - 1]);
+        refresh();
+    }
     void stepprev() { moveSel (-1); }
 
     void stepdel()

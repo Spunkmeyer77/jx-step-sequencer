@@ -6,6 +6,7 @@
 #endif
 
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
@@ -202,9 +203,35 @@ int JXStepSequencerEditor::hitTab (juce::Point<float> p) const
     return juce::jlimit (0, 3, (int) ((p.x - rateRect.getX()) / (rateRect.getWidth() / 4.0f)));
 }
 
+int JXStepSequencerEditor::hitStep (juce::Point<float> p) const
+{
+    const auto area = amxdLook ? screenRect.withWidth (345.0f) : screenRect;
+    const float w = area.getWidth(), h = area.getHeight();
+    const float cw = (w - 16) / 16, cy = area.getY() + 48;
+    const float ch = juce::jmin (34.0f, h - 48 - 20);
+    if (p.y < cy || p.y > cy + ch + 16) return 0;            // the cell or its number
+    const int col = (int) std::floor ((p.x - area.getX() - 8) / cw);
+    if (col < 0 || col > 15) return 0;
+
+    const auto& d = display;                                 // same page as the screen shows
+    int active = 1;
+    if (d.play && d.cur > 0) active = d.cur;
+    else if (d.rec) active = d.wr;
+    else if (d.sel > 0) active = d.sel;
+    else if (d.cur > 0) active = d.cur;
+    const int idx = juce::jmax (0, (active - 1) / 16) * 16 + col + 1;
+    return (idx <= d.count && ! d.rec) ? idx : 0;
+}
+
 void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
 {
     const auto p = toDevice (e.position);
+
+    if (const int step = hitStep (p); step > 0)
+    {
+        proc.selectStep (step);
+        return;
+    }
 
     const int tab = hitTab (p);
     if (tab >= 0)
@@ -243,6 +270,8 @@ void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
 void JXStepSequencerEditor::mouseMove (const juce::MouseEvent& e)
 {
     const int i = findControl (toDevice (e.position));
+    const bool overStep = hitStep (toDevice (e.position)) > 0;
+    if (overStep != overStepLast) { overStepLast = overStep; setMouseCursor (overStep ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor); }
     if (i != hover)
     {
         hover = i;

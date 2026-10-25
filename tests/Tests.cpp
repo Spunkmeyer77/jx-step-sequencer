@@ -77,6 +77,9 @@ static void engineTests()
     jx::SequencerEngine e3; e3.rectoggle();
     for (int i = 0; i < 130; ++i) e3.rest();
     CHECK (e3.getNumSteps() == 128 && ! e3.isWriting());
+    // click-select
+    { jx::SequencerEngine e5; e5.rectoggle(); e5.rest(); e5.rest(); e5.rest(); e5.selectStep (2); CHECK (e5.getDisplay().sel == 0);  // not while recording
+      e5.rectoggle(); e5.selectStep (3); CHECK (e5.getDisplay().sel == 3); e5.selectStep (9); CHECK (e5.getDisplay().sel == 3); }
     std::cout << "engine tests done\n";
 }
 

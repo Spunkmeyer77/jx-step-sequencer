@@ -76,7 +76,9 @@ void JXStepSequencerProcessor::runCommand (int c)
         case cmdPrev:  engine.stepprev(); break;
         case cmdNext:  engine.stepnext(); break;
         case cmdErase: engine.stepdel(); break;
-        default: break;
+        default:
+            if (c > selectBase) engine.selectStep (c - selectBase);
+            break;
     }
 }
 

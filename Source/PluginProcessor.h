@@ -43,6 +43,8 @@ public:
 
     // ---- editor interface ----
     void pushCommand (Command c);
+    void selectStep (int idx) { pushCommand ((Command) (selectBase + idx)); }   // 1-based
+    static constexpr int selectBase = 1000;
     jx::DisplayState getDisplay() const;
     juce::AudioParameterChoice& getRateParam() { return *rate; }
 

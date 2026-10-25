@@ -51,6 +51,7 @@ private:
     juce::TooltipWindow tooltipWindow { this, 700 };
     int pressed = -1;                        // control under the mouse-down (for the MIDI drag)
     bool dragStarted = false;
+    bool overStepLast = false;
 
     juce::File writeSequenceTo (const juce::File& folder) const;
 
@@ -59,6 +60,7 @@ private:
     juce::Point<float> toDevice (juce::Point<float> p) const;
     int findControl (juce::Point<float> devicePos) const;
     int hitTab (juce::Point<float> devicePos) const;
+    int hitStep (juce::Point<float> devicePos) const;   // 1-based step under the mouse, 0 = none
 
     void paintScreen (juce::Graphics&, juce::Rectangle<float> area) const;
     void paintControl (juce::Graphics&, const Control&) const;
