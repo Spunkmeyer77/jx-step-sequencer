@@ -446,7 +446,7 @@ void JXStepSequencerEditor::paintScreen (juce::Graphics& g, juce::Rectangle<floa
         const char type = (idx <= d.count) ? d.cells[(size_t) idx - 1] : 0;
 
         const bool isChord = idx <= d.count && d.chord[(size_t) idx - 1];
-        if (type == 'n' && isChord) fillRect (g, x + 1, cy, cw - 2, ch, rgba (0.80f, 0.62f, 0.10f));   // chord: brighter yellow
+        if (type == 'n' && isChord) fillRect (g, x + 1, cy, cw - 2, ch, rgba (0.96f, 0.84f, 0.32f));   // chord: light yellow
         else if (type == 'n') fillRect (g, x + 1, cy, cw - 2, ch, rgba (0.55f, 0.3f, 0.05f));
         else if (type == 't') fillRect (g, x + 1, cy, cw - 2, ch, rgba (0.1f, 0.25f, 0.45f));
         else if (type == 'r') fillRect (g, x + 1, cy, cw - 2, ch, rgba (0.18f, 0.18f, 0.18f));
