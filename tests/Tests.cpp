@@ -258,7 +258,7 @@ int main()
         feed (p, { {60,64,67}, {}, {62,65,69}, {}, {55,59,62,65} }, { JXStepSequencerProcessor::cmdTie, JXStepSequencerProcessor::cmdRest });
     });
     snapshot ((base + "/ui_playing.png").c_str(), [&] (auto& p) {
-        feed (p, { {60,64,67}, {}, {62,65,69}, {}, {55,59,62,65}, {57,60,64} }, { JXStepSequencerProcessor::cmdTie, JXStepSequencerProcessor::cmdRest });
+        feed (p, { {60,64,67}, {}, {62}, {}, {55,59,62,65}, {57} }, { JXStepSequencerProcessor::cmdTie, JXStepSequencerProcessor::cmdRest });
         p.pushCommand (JXStepSequencerProcessor::cmdRec);
         p.pushCommand (JXStepSequencerProcessor::cmdPlay);
         FakeHead h; h.playing = true; p.setPlayHead (&h);

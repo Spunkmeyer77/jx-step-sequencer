@@ -47,6 +47,7 @@ struct Info
 struct DisplayState
 {
     std::array<char, MAXSTEPS> cells {};
+    std::array<bool, MAXSTEPS> chord {};   // note step with 2 or more notes
     int count = 0;
     int cur = 0;                   // playing step, 1-based, 0 = none
     int wr = 0;                    // next step to be written, 0 = not recording
@@ -61,7 +62,8 @@ struct DisplayState
             || rec != o.rec || play != o.play || info.kind != o.info.kind
             || info.numNotes != o.info.numNotes)
             return false;
-        for (int i = 0; i < count; ++i) if (cells[(size_t) i] != o.cells[(size_t) i]) return false;
+        for (int i = 0; i < count; ++i)
+            if (cells[(size_t) i] != o.cells[(size_t) i] || chord[(size_t) i] != o.chord[(size_t) i]) return false;
         for (int i = 0; i < info.numNotes; ++i) if (info.pitch[(size_t) i] != o.info.pitch[(size_t) i]) return false;
         return true;
     }
@@ -281,7 +283,11 @@ public:
     {
         DisplayState d;
         d.count = numSteps;
-        for (int i = 0; i < numSteps; ++i) d.cells[(size_t) i] = steps[(size_t) i].t;
+        for (int i = 0; i < numSteps; ++i)
+        {
+            d.cells[(size_t) i] = steps[(size_t) i].t;
+            d.chord[(size_t) i] = steps[(size_t) i].t == 'n' && steps[(size_t) i].numNotes > 1;
+        }
         d.cur = playing ? pos + 1 : 0;
         d.wr = writing ? numSteps + 1 : 0;
         d.rec = writing;
