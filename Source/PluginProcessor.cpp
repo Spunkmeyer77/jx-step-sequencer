@@ -219,7 +219,7 @@ void JXStepSequencerProcessor::setStateInformation (const void* data, int sizeIn
 
     *rate = juce::jlimit (0, 3, xml->getIntAttribute ("rate", 2));
     editorScale = (float) juce::jlimit (1.0, 3.0, xml->getDoubleAttribute ("scale", 1.5));
-    showHelp = xml->getBoolAttribute ("help", true);
+    showHelp = xml->getBoolAttribute ("help", false);
 
     std::vector<jx::Step> loaded;
     if (auto* seq = xml->getChildByName ("Sequence"))
