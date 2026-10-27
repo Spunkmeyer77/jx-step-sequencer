@@ -148,7 +148,7 @@ JXStepSequencerEditor::JXStepSequencerEditor (JXStepSequencerProcessor& p)
     shownRate = proc.getRateParam().getIndex();
 
     setResizable (true, true);
-    setResizeLimits (baseWidth, baseHeight, baseWidth * 3, baseHeight * 3);
+    setResizeLimits (baseWidth, baseHeight, baseWidth * 15 / 4, baseHeight * 15 / 4);   // 3x, plus the 125 % zoom
     if (auto* c = getConstrainer())
         c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
     setSize (juce::roundToInt ((amxdLook ? 357 : baseWidth) * proc.editorScale), juce::roundToInt (baseHeight * proc.editorScale));
@@ -169,6 +169,8 @@ juce::Point<float> JXStepSequencerEditor::toDevice (juce::Point<float> p) const
 void JXStepSequencerEditor::resized()
 {
     proc.editorScale = scale();
+    if (! juce::approximatelyEqual (scale(), proc.normalScale * 1.25f))
+        proc.normalScale = scale();          // dragging the corner sets a new normal size
 }
 
 void JXStepSequencerEditor::timerCallback()
@@ -176,6 +178,10 @@ void JXStepSequencerEditor::timerCallback()
     bool dirty = false;
     const auto d = proc.getDisplay();
     if (d != display) { display = d; dirty = true; }
+
+    const int trn = proc.getTransposeParam().get();
+    const bool key = proc.getKeyParam().get();
+    if (trn != shownTrn || key != shownKey) { shownTrn = trn; shownKey = key; dirty = true; }
 
     const int r = proc.getRateParam().getIndex();
     if (r != shownRate) { shownRate = r; dirty = true; }
@@ -203,6 +209,18 @@ int JXStepSequencerEditor::hitTab (juce::Point<float> p) const
     return juce::jlimit (0, 3, (int) ((p.x - rateRect.getX()) / (rateRect.getWidth() / 4.0f)));
 }
 
+void JXStepSequencerEditor::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    const auto p = toDevice (e.position);
+    if (trnOpen || ! screenRect.contains (p) || trnArea().contains (p) || keyArea().contains (p)) return;
+
+    // double-click the display: 125 % larger, double-click again: back to the normal size
+    const float normal = proc.normalScale;
+    const bool big = scale() > normal * 1.12f;
+    const float target = big ? normal : normal * 1.25f;
+    setSize (juce::roundToInt (baseWidth * target), juce::roundToInt (baseHeight * target));
+}
+
 int JXStepSequencerEditor::hitStep (juce::Point<float> p) const
 {
     const auto area = amxdLook ? screenRect.withWidth (345.0f) : screenRect;
@@ -223,9 +241,67 @@ int JXStepSequencerEditor::hitStep (juce::Point<float> p) const
     return (idx <= d.count && ! d.rec) ? idx : 0;
 }
 
+juce::Rectangle<float> JXStepSequencerEditor::trnArea() const { return { 6 + 176, 4 + 20, 66, 18 }; }
+
+juce::Rectangle<float> JXStepSequencerEditor::keyArea() const
+{
+    const auto area = amxdLook ? screenRect.withWidth (345.0f) : screenRect;
+    juce::GlyphArrangement ga;
+    ga.addLineOfText (arialBold (11), "PAGE 8/8", 0, 0);
+    const float pageLeft = area.getX() + area.getWidth() - 92 - ga.getBoundingBox (0, -1, true).getWidth();
+    return { pageLeft - 2, 4 + 22, 30, 16 };
+}
+
+juce::Rectangle<float> JXStepSequencerEditor::trnPopup() const { return { 196, 38, 52, 14 + trnRows * 10.5f + 12 }; }
+
 void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
 {
     const auto p = toDevice (e.position);
+
+    if (trnOpen)                                         // the list takes the click
+    {
+        const auto box = trnPopup();
+        if (box.contains (p))
+        {
+            if (p.y < box.getY() + 10)                   trnTop = juce::jmin (24, trnTop + trnRows);          // up arrow: higher values
+            else if (p.y > box.getBottom() - 12)         trnTop = juce::jmax (-24 + trnRows - 1, trnTop - trnRows);
+            else
+            {
+                const int row = juce::jlimit (0, trnRows - 1, (int) ((p.y - box.getY() - 11) / 10.5f));
+                const int v = trnTop - row;
+                if (v >= -24 && v <= 24)
+                {
+                    auto& prm = proc.getTransposeParam();
+                    prm.beginChangeGesture(); prm = v; prm.endChangeGesture();
+                    trnOpen = false;
+                }
+            }
+        }
+        else trnOpen = false;                            // click outside closes, nothing changes
+        repaint();
+        return;
+    }
+
+    if (! amxdLook && stripesArea().contains (p))
+    {
+        juce::URL ("https://ticcoross.gumroad.com/").launchInDefaultBrowser();
+        return;
+    }
+
+    if (! amxdLook && trnArea().contains (p))
+    {
+        trnOpen = true;
+        trnTop = juce::jlimit (-24 + trnRows - 1, 24, proc.getTransposeParam().get() + trnRows / 2);
+        repaint();
+        return;
+    }
+    if (! amxdLook && keyArea().contains (p))
+    {
+        auto& kp = proc.getKeyParam();
+        kp.beginChangeGesture(); kp = ! kp.get(); kp.endChangeGesture();
+        repaint();
+        return;
+    }
 
     if (const int step = hitStep (p); step > 0)
     {
@@ -270,7 +346,7 @@ void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
 void JXStepSequencerEditor::mouseMove (const juce::MouseEvent& e)
 {
     const int i = findControl (toDevice (e.position));
-    const bool overStep = hitStep (toDevice (e.position)) > 0;
+    const bool overStep = hitStep (toDevice (e.position)) > 0 || (! amxdLook && stripesArea().contains (toDevice (e.position)));
     if (overStep != overStepLast) { overStepLast = overStep; setMouseCursor (overStep ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor); }
     if (i != hover)
     {
@@ -291,7 +367,11 @@ void JXStepSequencerEditor::mouseExit (const juce::MouseEvent&)
 
 juce::File JXStepSequencerEditor::writeSequenceTo (const juce::File& folder) const
 {
-    const auto steps = proc.getSequence();
+    auto steps = proc.getSequence();
+    const int tr = proc.getTransposeParam().get();          // export what you hear
+    for (auto& st : steps)
+        for (int n = 0; n < st.numNotes; ++n)
+            st.pitch[(size_t) n] = (juce::uint8) juce::jlimit (0, 127, (int) st.pitch[(size_t) n] + tr);
     if (steps.empty()) return {};
     folder.createDirectory();
     const auto f = folder.getChildFile ("JX Sequence " + juce::Time::getCurrentTime().formatted ("%Y-%m-%d %H-%M-%S") + ".mid");
@@ -327,6 +407,8 @@ void JXStepSequencerEditor::mouseUp (const juce::MouseEvent& e)
 juce::String JXStepSequencerEditor::getTooltip()
 {
     if (! proc.showHelp) return {};
+    if (! amxdLook && stripesArea().contains (getMouseXYRelative().toFloat() / scale()))
+        return "Visit Ticco Ross on Gumroad: ticcoross.gumroad.com";
     if (hover == rateHover) return "Length of one step.";
     if (hover >= 0 && hover < (int) controls.size()) return controls[(size_t) hover].hint;
     return {};
@@ -357,12 +439,50 @@ void JXStepSequencerEditor::paint (juce::Graphics& g)
     label (g, "<",     190 + 3, 134 + 13, 10, commentCol);
     label (g, ">",     246 + 3, 134 + 13, 10, commentCol);
     label (g, "Erase", 288 + 3, 134 + 13, 10, commentCol);
+
+    if (trnOpen) paintTransposePopup (g);   // on top of everything
 }
 
 void JXStepSequencerEditor::paintStripes (juce::Graphics& g) const
 {
     // JX-3P stripes, small badge between Clear/Erase and HELP/MIDI
     drawStripeSet (g, { 323, 112, 34, 40 }, 5.0f, 3.0f, 12.0f, 356.0f, false);
+}
+
+void JXStepSequencerEditor::paintTransposePopup (juce::Graphics& g) const
+{
+    const auto RED  = rgba (1.0f, 0.25f, 0.2f);
+    const auto SOFT = rgba (0.59f, 0.19f, 0.16f);
+    const auto DIM  = rgba (0.35f, 0.12f, 0.1f);
+    const auto box = trnPopup();
+    const int cur = proc.getTransposeParam().get();
+
+    juce::DropShadow (juce::Colours::black.withAlpha (0.7f), 8, { 2, 4 }).drawForRectangle (g, box.toNearestInt());
+    g.setColour (rgba (0.086f, 0.047f, 0.043f));
+    g.fillRoundedRectangle (box, 5);
+    g.setColour (rgba (0.47f, 0.18f, 0.15f));
+    g.drawRoundedRectangle (box.reduced (0.5f), 5, 1);
+
+    const float cx = box.getCentreX();
+    juce::Path up, down;
+    up.addTriangle (cx - 4, box.getY() + 8, cx + 4, box.getY() + 8, cx, box.getY() + 4);
+    down.addTriangle (cx - 4, box.getBottom() - 8, cx + 4, box.getBottom() - 8, cx, box.getBottom() - 4);
+    g.setColour (trnTop < 24 ? SOFT : DIM);              g.fillPath (up);
+    g.setColour (trnTop - trnRows + 1 > -24 ? SOFT : DIM); g.fillPath (down);
+
+    for (int i = 0; i < trnRows; ++i)
+    {
+        const int v = trnTop - i;
+        if (v < -24) break;
+        const float y = box.getY() + 11 + i * 10.5f;
+        if (v == cur)
+        {
+            g.setColour (rgba (0.235f, 0.063f, 0.055f));
+            g.fillRoundedRectangle ({ box.getX() + 4, y - 0.5f, box.getWidth() - 8, 10.5f }, 3);
+        }
+        const juce::String t = v > 0 ? "+" + juce::String (v) : juce::String (v);
+        label (g, t, cx, y + 8.5f, 9, v == cur ? RED : SOFT, Align::Center);
+    }
 }
 
 void JXStepSequencerEditor::paintControl (juce::Graphics& g, const Control& c) const
@@ -509,4 +629,21 @@ void JXStepSequencerEditor::paintScreen (juce::Graphics& g, juce::Rectangle<floa
 
     // page indicator
     label (g, "PAGE " + juce::String (page + 1) + "/8", w - 92, 18, 11, DIM, Align::Right);
+
+    // transpose readout and KEY (VST3 / AU only)
+    if (! amxdLook)
+    {
+        const int trn = proc.getTransposeParam().get();
+        const juce::String tv = trn > 0 ? "+" + juce::String (trn) : juce::String (trn);
+        label (g, "TRN", 178, 34, 9, DIM);
+        label (g, tv, 200, 34, 14, DIM);
+        juce::Path tri;
+        tri.addTriangle (226, 28, 232, 28, 229, 31.5f);
+        g.setColour (DIM); g.fillPath (tri);
+
+        juce::GlyphArrangement ga;
+        ga.addLineOfText (arialBold (11), "PAGE 8/8", 0, 0);
+        const float pageLeft = w - 92 - ga.getBoundingBox (0, -1, true).getWidth();
+        label (g, "KEY", pageLeft, 34, 9, proc.getKeyParam().get() ? RED : DIM);
+    }
 }

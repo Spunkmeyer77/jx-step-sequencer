@@ -10,16 +10,21 @@ namespace
     struct BufferSink : jx::MidiSink
     {
         juce::MidiBuffer& buffer;
+        std::array<int, 128>& sent;
         int samplePos = 0;
-        explicit BufferSink (juce::MidiBuffer& b) : buffer (b) {}
+        int transpose = 0;
+        BufferSink (juce::MidiBuffer& b, std::array<int, 128>& s) : buffer (b), sent (s) {}
 
         void noteOn (int pitch, int velocity) override
         {
-            buffer.addEvent (juce::MidiMessage::noteOn (1, pitch, (juce::uint8) velocity), samplePos);
+            const int q = juce::jlimit (0, 127, pitch + transpose);
+            sent[(size_t) pitch] = q;
+            buffer.addEvent (juce::MidiMessage::noteOn (1, q, (juce::uint8) velocity), samplePos);
         }
         void noteOff (int pitch) override
         {
-            buffer.addEvent (juce::MidiMessage::noteOff (1, pitch, (juce::uint8) 0), samplePos);
+            // the same pitch that was sent at note-on, even if transpose changed since
+            buffer.addEvent (juce::MidiMessage::noteOff (1, sent[(size_t) pitch], (juce::uint8) 0), samplePos);
         }
     };
 }
@@ -38,6 +43,10 @@ JXStepSequencerProcessor::JXStepSequencerProcessor()
     const char* names[] = { "REC", "PLAY", "Rest", "Tie", "Clear", "Previous step", "Next step", "Erase" };
     for (int i = 0; i < numTriggers; ++i)
         addParameter (triggers[(size_t) i] = new juce::AudioParameterBool (juce::ParameterID { ids[i], 1 }, names[i], false));
+
+    addParameter (transpose = new juce::AudioParameterInt (juce::ParameterID { "transpose", 1 }, "Transpose", -24, 24, 0));
+    addParameter (keyTranspose = new juce::AudioParameterBool (juce::ParameterID { "keytranspose", 1 }, "Key transpose", false));
+    for (int i = 0; i < 128; ++i) sentPitch[(size_t) i] = i;
 }
 
 bool JXStepSequencerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -102,7 +111,8 @@ void JXStepSequencerProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     }
 
     outMidi.clear();
-    BufferSink sink (outMidi);
+    BufferSink sink (outMidi, sentPitch);
+    sink.transpose = transpose->get();
 
     const juce::SpinLock::ScopedLockType lock (engineLock);
     engine.out = &sink;
@@ -161,8 +171,21 @@ void JXStepSequencerProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
         while (t < numTicks && tickPos[t] < samplePos) { sink.samplePos = tickPos[t++]; engine.tick(); }
 
-        outMidi.addEvent (msg, samplePos);           // pass the input through (notein -> noteout)
         sink.samplePos = samplePos;
+
+        // KEY: while the sequence plays, a key sets the transpose (C3 = 0) and is not passed on
+        if (keyTranspose->get() && engine.isPlaying() && ! engine.isWriting() && (msg.isNoteOn() || msg.isNoteOff()))
+        {
+            if (msg.isNoteOn())
+            {
+                const int t = juce::jlimit (-24, 24, msg.getNoteNumber() - 60);
+                *transpose = t;
+                sink.transpose = t;
+            }
+            continue;
+        }
+
+        outMidi.addEvent (msg, samplePos);           // pass the input through (notein -> noteout)
         if (msg.isNoteOn())       engine.note (msg.getNoteNumber(), msg.getVelocity());
         else if (msg.isNoteOff()) engine.note (msg.getNoteNumber(), 0);
     }
@@ -195,7 +218,10 @@ void JXStepSequencerProcessor::getStateInformation (juce::MemoryBlock& destData)
     root.setAttribute ("version", 1);
     root.setAttribute ("rate", rate->getIndex());
     root.setAttribute ("scale", (double) editorScale);
+    root.setAttribute ("normalScale", (double) normalScale);
     root.setAttribute ("help", showHelp.load());
+    root.setAttribute ("transpose", transpose->get());
+    root.setAttribute ("key", keyTranspose->get());
 
     auto* seq = root.createNewChildElement ("Sequence");
     {
@@ -220,8 +246,11 @@ void JXStepSequencerProcessor::setStateInformation (const void* data, int sizeIn
     if (xml == nullptr || ! xml->hasTagName ("JXStepSequencer")) return;
 
     *rate = juce::jlimit (0, 3, xml->getIntAttribute ("rate", 2));
-    editorScale = (float) juce::jlimit (1.0, 3.0, xml->getDoubleAttribute ("scale", 1.5));
+    editorScale = (float) juce::jlimit (1.0, 3.75, xml->getDoubleAttribute ("scale", 1.5));
+    normalScale = (float) juce::jlimit (1.0, 3.0, xml->getDoubleAttribute ("normalScale", editorScale));
     showHelp = xml->getBoolAttribute ("help", false);
+    *transpose = juce::jlimit (-24, 24, xml->getIntAttribute ("transpose", 0));
+    *keyTranspose = xml->getBoolAttribute ("key", false);
 
     std::vector<jx::Step> loaded;
     if (auto* seq = xml->getChildByName ("Sequence"))

@@ -20,7 +20,9 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseDoubleClick (const juce::MouseEvent&) override;
     juce::String getTooltip() override;
+    void openTransposeList() { trnOpen = true; trnTop = juce::jlimit (-24 + trnRows - 1, 24, proc.getTransposeParam().get() + trnRows / 2); repaint(); }
 
     static constexpr int baseWidth = 400;   // 357 in the M4L device, + a column for HELP / MIDI
     static constexpr int baseHeight = 169;
@@ -53,6 +55,17 @@ private:
     bool dragStarted = false;
     bool overStepLast = false;
 
+    // transpose on the LCD: "TRN +5 v" opens a click-only list; "KEY" toggles key transpose
+    int shownTrn = 0;
+    bool shownKey = false;
+    bool trnOpen = false;
+    int trnTop = 7;                          // value shown in the first visible row of the list
+    static constexpr int trnRows = 5;
+    juce::Rectangle<float> trnArea() const;  // the TRN readout (device coordinates)
+    juce::Rectangle<float> keyArea() const;  // the KEY word
+    juce::Rectangle<float> trnPopup() const; // the open list
+    void paintTransposePopup (juce::Graphics&) const;
+
     juce::File writeSequenceTo (const juce::File& folder) const;
 
     void timerCallback() override;
@@ -66,6 +79,8 @@ private:
     void paintControl (juce::Graphics&, const Control&) const;
     void paintRateTab (juce::Graphics&) const;
     void paintStripes (juce::Graphics&) const;
+    static juce::Rectangle<float> stripesArea() { return { 321, 110, 38, 46 }; }   // links to the Gumroad store
+    bool overStripes = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JXStepSequencerEditor)
 };

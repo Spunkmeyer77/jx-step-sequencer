@@ -160,18 +160,48 @@ public:
 
     void rest()
     {
-        if (! writing || chord.numNotes > 0 || heldCount > 0) return;
+        if (! writing) { restSelected(); return; }
+        if (chord.numNotes > 0 || heldCount > 0) return;
         showInfoKind (Info::Rest);
         pushStep (makeStep ('r'));
     }
 
     void tie()
     {
-        if (! writing || chord.numNotes > 0 || heldCount > 0) return;
+        if (! writing) { tieSelected(); return; }
+        if (chord.numNotes > 0 || heldCount > 0) return;
         if (numSteps == 0) return;
         if (steps[(size_t) numSteps - 1].t == 'r') return;   // nothing to tie to
         showInfoKind (Info::Tie);
         pushStep (makeStep ('t'));
+    }
+
+    // REC off: Rest / Tie change the selected step
+    void restSelected()
+    {
+        if (numSteps == 0) return;
+        if (editing) { editing = false; resetEntry(); }
+        clampSel();
+        const int idx = sel - 1;
+        if (steps[(size_t) idx].t == 'r') return;
+        steps[(size_t) idx] = makeStep ('r');
+        for (int j = idx + 1; j < numSteps && steps[(size_t) j].t == 't'; ++j)
+            steps[(size_t) j] = makeStep ('r');              // ties that continued it have nothing to hold
+        if (! playing) showInfoKind (Info::Rest);
+        refresh();
+    }
+
+    void tieSelected()
+    {
+        if (numSteps == 0) return;
+        if (editing) { editing = false; resetEntry(); }
+        clampSel();
+        const int idx = sel - 1;
+        if (idx == 0 || steps[(size_t) idx - 1].t == 'r') return;   // nothing to tie to
+        if (steps[(size_t) idx].t == 't') return;
+        steps[(size_t) idx] = makeStep ('t');
+        if (! playing) showInfoKind (Info::Tie);
+        refresh();
     }
 
     void clear()

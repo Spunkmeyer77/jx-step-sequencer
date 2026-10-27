@@ -47,8 +47,11 @@ public:
     static constexpr int selectBase = 1000;
     jx::DisplayState getDisplay() const;
     juce::AudioParameterChoice& getRateParam() { return *rate; }
+    juce::AudioParameterInt& getTransposeParam() { return *transpose; }
+    juce::AudioParameterBool& getKeyParam() { return *keyTranspose; }
 
     float editorScale = 1.5f;        // remembered with the project
+    float normalScale = 1.5f;        // size before the double-click zoom
     std::atomic<bool> showHelp { false };   // HELP button: hover tooltips on/off, remembered with the project
 
     std::vector<jx::Step> getSequence() const;   // copy of the steps, for MIDI export
@@ -61,6 +64,9 @@ private:
     jx::SequencerEngine engine;
     mutable juce::SpinLock engineLock;
     juce::AudioParameterChoice* rate = nullptr;
+    juce::AudioParameterInt* transpose = nullptr;      // -24..+24 semitones, applied on output
+    juce::AudioParameterBool* keyTranspose = nullptr;  // KEY: incoming notes set the transpose while playing
+    std::array<int, 128> sentPitch {};                 // pitch actually sent for each sequenced note (for matching note-offs)
 
     // MIDI-mappable buttons: each is a host parameter; a press (value going above
     // half) triggers the command, like clicking the button on the panel.

@@ -80,6 +80,12 @@ static void engineTests()
     // click-select
     { jx::SequencerEngine e5; e5.rectoggle(); e5.rest(); e5.rest(); e5.rest(); e5.selectStep (2); CHECK (e5.getDisplay().sel == 0);  // not while recording
       e5.rectoggle(); e5.selectStep (3); CHECK (e5.getDisplay().sel == 3); e5.selectStep (9); CHECK (e5.getDisplay().sel == 3); }
+    // REC off: Rest / Tie act on the selected step
+    { jx::SequencerEngine e6; e6.rectoggle(); e6.note (60,100); e6.note (60,0); e6.note (62,100); e6.note (62,0); e6.note (64,100); e6.note (64,0); e6.rectoggle();
+      e6.selectStep (2); e6.tie(); CHECK (cells (e6.getDisplay()) == "ntn");
+      e6.selectStep (1); e6.rest(); CHECK (cells (e6.getDisplay()) == "rrn");      // its tie goes too
+      e6.selectStep (2); e6.tie(); CHECK (cells (e6.getDisplay()) == "rrn");       // nothing to tie to
+      e6.selectStep (1); e6.tie(); CHECK (cells (e6.getDisplay()) == "rrn"); }
     std::cout << "engine tests done\n";
 }
 
@@ -185,6 +191,31 @@ static void processorTests()
         recParam->setValue (1.0f); { juce::MidiBuffer m; p4.processBlock (a4, m); }
         CHECK (! p4.getDisplay().rec);               // second press toggles off
     }
+    // transpose + KEY
+    {
+        JXStepSequencerProcessor p5; FakeHead h5; h5.playing = false; p5.setPlayHead (&h5);
+        p5.prepareToPlay (sr, 6000); juce::AudioBuffer<float> a5 (2, 6000);
+        p5.pushCommand (JXStepSequencerProcessor::cmdRec);
+        { juce::MidiBuffer m; m.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 0); m.addEvent (juce::MidiMessage::noteOff (1, 60), 1); p5.processBlock (a5, m); }
+        p5.pushCommand (JXStepSequencerProcessor::cmdRec);
+        p5.pushCommand (JXStepSequencerProcessor::cmdPlay);
+        p5.getTransposeParam() = 5;
+        h5.playing = true; std::vector<int> ons, offs;
+        auto blk = [&] (double ppq, juce::MidiBuffer in) { h5.ppq = ppq; p5.processBlock (a5, in); for (auto md : in) { auto mm = md.getMessage(); if (mm.isNoteOn()) ons.push_back (mm.getNoteNumber()); else if (mm.isNoteOff()) offs.push_back (mm.getNoteNumber()); } };
+        blk (0.0, {});
+        CHECK (ons.size() == 1 && ons[0] == 65);
+        p5.getTransposeParam() = -2;                      // change while the note sounds
+        blk (0.25, {});
+        CHECK (offs.size() == 1 && offs[0] == 65);         // note-off matches what was sent
+        CHECK (ons.size() == 2 && ons[1] == 58);
+        p5.getKeyParam() = true; ons.clear();
+        juce::MidiBuffer kin; kin.addEvent (juce::MidiMessage::noteOn (1, 64, (juce::uint8) 100), 10);
+        blk (0.5, kin);
+        CHECK (p5.getTransposeParam().get() == 4);         // E3 = +4
+        CHECK (ons.size() == 1 && ons[0] == 58);           // key not passed through (step on this tick came first)
+        ons.clear(); blk (0.75, {});
+        CHECK (ons.size() == 1 && ons[0] == 64);           // next step plays at +4
+    }
     std::cout << "processor tests done\n";
 }
 
@@ -283,6 +314,17 @@ int main()
         p.setPlayHead (nullptr);
     });
     JXStepSequencerEditor::amxdLook = false;
+
+    {   // transpose UI previews
+        JXStepSequencerProcessor p; FakeHead head; head.playing = false; p.setPlayHead (&head); p.prepareToPlay (48000, 480);
+        feed (p, { {60,64,67}, {}, {62}, {}, {55,59,62,65}, {57} }, { JXStepSequencerProcessor::cmdTie, JXStepSequencerProcessor::cmdRest });
+        p.pushCommand (JXStepSequencerProcessor::cmdRec);
+        { juce::AudioBuffer<float> a (2, 480); juce::MidiBuffer m; p.processBlock (a, m); }
+        p.getTransposeParam() = 5; p.getKeyParam() = true;
+        std::unique_ptr<JXStepSequencerEditor> ed (dynamic_cast<JXStepSequencerEditor*> (p.createEditor()));
+        auto save = [&] (const char* n) { auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 3.0f); juce::File f (base + n); f.deleteFile(); juce::FileOutputStream os (f); juce::PNGImageFormat().writeImageToStream (img, os); };
+        save ("/trn_closed.png"); ed->openTransposeList(); save ("/trn_open.png");
+    }
 
     std::cout << (failures == 0 ? "ALL PASSED\n" : "FAILURES: " + std::to_string (failures) + "\n");
     return failures == 0 ? 0 : 1;
