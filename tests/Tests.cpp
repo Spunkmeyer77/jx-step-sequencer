@@ -323,7 +323,7 @@ int main()
         p.getTransposeParam() = 5; p.getKeyParam() = true;
         std::unique_ptr<JXStepSequencerEditor> ed (dynamic_cast<JXStepSequencerEditor*> (p.createEditor()));
         auto save = [&] (const char* n) { auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 3.0f); juce::File f (base + n); f.deleteFile(); juce::FileOutputStream os (f); juce::PNGImageFormat().writeImageToStream (img, os); };
-        save ("/trn_closed.png"); ed->openTransposeList(); save ("/trn_open.png");
+        save ("/trn_closed.png");
     }
 
     std::cout << (failures == 0 ? "ALL PASSED\n" : "FAILURES: " + std::to_string (failures) + "\n");

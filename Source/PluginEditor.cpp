@@ -212,7 +212,14 @@ int JXStepSequencerEditor::hitTab (juce::Point<float> p) const
 void JXStepSequencerEditor::mouseDoubleClick (const juce::MouseEvent& e)
 {
     const auto p = toDevice (e.position);
-    if (trnOpen || ! screenRect.contains (p) || trnArea().contains (p) || keyArea().contains (p)) return;
+    if (! amxdLook && keyArea().contains (p))          // double-click KEY: transpose back to 0
+    {
+        auto& tp = proc.getTransposeParam();
+        tp.beginChangeGesture(); tp = 0; tp.endChangeGesture();
+        repaint();
+        return;
+    }
+    if (trnOpen || ! screenRect.contains (p)) return;
 
     // double-click the display: 125 % larger, double-click again: back to the normal size
     const float normal = proc.normalScale;
@@ -249,7 +256,7 @@ juce::Rectangle<float> JXStepSequencerEditor::keyArea() const
     juce::GlyphArrangement ga;
     ga.addLineOfText (arialBold (11), "PAGE 8/8", 0, 0);
     const float pageLeft = area.getX() + area.getWidth() - 92 - ga.getBoundingBox (0, -1, true).getWidth();
-    return { pageLeft - 2, 4 + 22, 30, 16 };
+    return { pageLeft - 2, 4 + 22, 52, 16 };   // KEY and its transpose number
 }
 
 juce::Rectangle<float> JXStepSequencerEditor::trnPopup() const { return { 196, 38, 52, 14 + trnRows * 10.5f + 12 }; }
@@ -288,13 +295,6 @@ void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
         return;
     }
 
-    if (! amxdLook && trnArea().contains (p))
-    {
-        trnOpen = true;
-        trnTop = juce::jlimit (-24 + trnRows - 1, 24, proc.getTransposeParam().get() + trnRows / 2);
-        repaint();
-        return;
-    }
     if (! amxdLook && keyArea().contains (p))
     {
         auto& kp = proc.getKeyParam();
@@ -633,17 +633,19 @@ void JXStepSequencerEditor::paintScreen (juce::Graphics& g, juce::Rectangle<floa
     // transpose readout and KEY (VST3 / AU only)
     if (! amxdLook)
     {
-        const int trn = proc.getTransposeParam().get();
-        const juce::String tv = trn > 0 ? "+" + juce::String (trn) : juce::String (trn);
-        label (g, "TRN", 178, 34, 9, DIM);
-        label (g, tv, 200, 34, 14, DIM);
-        juce::Path tri;
-        tri.addTriangle (226, 28, 232, 28, 229, 31.5f);
-        g.setColour (DIM); g.fillPath (tri);
-
         juce::GlyphArrangement ga;
         ga.addLineOfText (arialBold (11), "PAGE 8/8", 0, 0);
         const float pageLeft = w - 92 - ga.getBoundingBox (0, -1, true).getWidth();
         label (g, "KEY", pageLeft, 34, 9, proc.getKeyParam().get() ? RED : DIM);
+
+        // the transpose amount, right after KEY, always dimmed (hidden at 0)
+        const int trn = proc.getTransposeParam().get();
+        if (trn != 0)
+        {
+            juce::GlyphArrangement kw;
+            kw.addLineOfText (arialBold (9), "KEY ", 0, 0);
+            const juce::String tv = (trn > 0 ? "+" : juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"))) + juce::String (std::abs (trn));
+            label (g, tv, pageLeft + kw.getBoundingBox (0, -1, true).getWidth(), 34, 9, DIM);
+        }
     }
 }
