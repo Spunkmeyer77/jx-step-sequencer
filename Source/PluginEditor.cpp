@@ -148,7 +148,7 @@ JXStepSequencerEditor::JXStepSequencerEditor (JXStepSequencerProcessor& p)
     shownRate = proc.getRateParam().getIndex();
 
     setResizable (true, true);
-    setResizeLimits (baseWidth, baseHeight, baseWidth * 3, baseHeight * 3);
+    setResizeLimits (baseWidth, baseHeight, baseWidth * 15 / 4, baseHeight * 15 / 4);   // 3x, plus the 125 % zoom
     if (auto* c = getConstrainer())
         c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
     setSize (juce::roundToInt ((amxdLook ? 357 : baseWidth) * proc.editorScale), juce::roundToInt (baseHeight * proc.editorScale));
@@ -169,6 +169,8 @@ juce::Point<float> JXStepSequencerEditor::toDevice (juce::Point<float> p) const
 void JXStepSequencerEditor::resized()
 {
     proc.editorScale = scale();
+    if (! juce::approximatelyEqual (scale(), proc.normalScale * 1.25f))
+        proc.normalScale = scale();          // dragging the corner sets a new normal size
 }
 
 void JXStepSequencerEditor::timerCallback()
@@ -205,6 +207,18 @@ int JXStepSequencerEditor::hitTab (juce::Point<float> p) const
 {
     if (! rateRect.contains (p)) return -1;
     return juce::jlimit (0, 3, (int) ((p.x - rateRect.getX()) / (rateRect.getWidth() / 4.0f)));
+}
+
+void JXStepSequencerEditor::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    const auto p = toDevice (e.position);
+    if (trnOpen || ! screenRect.contains (p) || trnArea().contains (p) || keyArea().contains (p)) return;
+
+    // double-click the display: 125 % larger, double-click again: back to the normal size
+    const float normal = proc.normalScale;
+    const bool big = scale() > normal * 1.12f;
+    const float target = big ? normal : normal * 1.25f;
+    setSize (juce::roundToInt (baseWidth * target), juce::roundToInt (baseHeight * target));
 }
 
 int JXStepSequencerEditor::hitStep (juce::Point<float> p) const
@@ -268,6 +282,12 @@ void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
         return;
     }
 
+    if (! amxdLook && stripesArea().contains (p))
+    {
+        juce::URL ("https://ticcoross.gumroad.com/").launchInDefaultBrowser();
+        return;
+    }
+
     if (! amxdLook && trnArea().contains (p))
     {
         trnOpen = true;
@@ -326,7 +346,7 @@ void JXStepSequencerEditor::mouseDown (const juce::MouseEvent& e)
 void JXStepSequencerEditor::mouseMove (const juce::MouseEvent& e)
 {
     const int i = findControl (toDevice (e.position));
-    const bool overStep = hitStep (toDevice (e.position)) > 0;
+    const bool overStep = hitStep (toDevice (e.position)) > 0 || (! amxdLook && stripesArea().contains (toDevice (e.position)));
     if (overStep != overStepLast) { overStepLast = overStep; setMouseCursor (overStep ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor); }
     if (i != hover)
     {
@@ -387,6 +407,8 @@ void JXStepSequencerEditor::mouseUp (const juce::MouseEvent& e)
 juce::String JXStepSequencerEditor::getTooltip()
 {
     if (! proc.showHelp) return {};
+    if (! amxdLook && stripesArea().contains (getMouseXYRelative().toFloat() / scale()))
+        return "Visit Ticco Ross on Gumroad: ticcoross.gumroad.com";
     if (hover == rateHover) return "Length of one step.";
     if (hover >= 0 && hover < (int) controls.size()) return controls[(size_t) hover].hint;
     return {};

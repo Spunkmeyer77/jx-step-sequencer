@@ -51,6 +51,7 @@ public:
     juce::AudioParameterBool& getKeyParam() { return *keyTranspose; }
 
     float editorScale = 1.5f;        // remembered with the project
+    float normalScale = 1.5f;        // size before the double-click zoom
     std::atomic<bool> showHelp { false };   // HELP button: hover tooltips on/off, remembered with the project
 
     std::vector<jx::Step> getSequence() const;   // copy of the steps, for MIDI export

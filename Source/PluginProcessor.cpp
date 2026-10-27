@@ -218,6 +218,7 @@ void JXStepSequencerProcessor::getStateInformation (juce::MemoryBlock& destData)
     root.setAttribute ("version", 1);
     root.setAttribute ("rate", rate->getIndex());
     root.setAttribute ("scale", (double) editorScale);
+    root.setAttribute ("normalScale", (double) normalScale);
     root.setAttribute ("help", showHelp.load());
     root.setAttribute ("transpose", transpose->get());
     root.setAttribute ("key", keyTranspose->get());
@@ -245,7 +246,8 @@ void JXStepSequencerProcessor::setStateInformation (const void* data, int sizeIn
     if (xml == nullptr || ! xml->hasTagName ("JXStepSequencer")) return;
 
     *rate = juce::jlimit (0, 3, xml->getIntAttribute ("rate", 2));
-    editorScale = (float) juce::jlimit (1.0, 3.0, xml->getDoubleAttribute ("scale", 1.5));
+    editorScale = (float) juce::jlimit (1.0, 3.75, xml->getDoubleAttribute ("scale", 1.5));
+    normalScale = (float) juce::jlimit (1.0, 3.0, xml->getDoubleAttribute ("normalScale", editorScale));
     showHelp = xml->getBoolAttribute ("help", false);
     *transpose = juce::jlimit (-24, 24, xml->getIntAttribute ("transpose", 0));
     *keyTranspose = xml->getBoolAttribute ("key", false);

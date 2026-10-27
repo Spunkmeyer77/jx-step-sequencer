@@ -20,6 +20,7 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseDoubleClick (const juce::MouseEvent&) override;
     juce::String getTooltip() override;
     void openTransposeList() { trnOpen = true; trnTop = juce::jlimit (-24 + trnRows - 1, 24, proc.getTransposeParam().get() + trnRows / 2); repaint(); }
 
@@ -78,6 +79,8 @@ private:
     void paintControl (juce::Graphics&, const Control&) const;
     void paintRateTab (juce::Graphics&) const;
     void paintStripes (juce::Graphics&) const;
+    static juce::Rectangle<float> stripesArea() { return { 321, 110, 38, 46 }; }   // links to the Gumroad store
+    bool overStripes = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JXStepSequencerEditor)
 };

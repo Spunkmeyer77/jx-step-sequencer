@@ -126,6 +126,7 @@ jobs:
             dist/JX-Step-Sequencer-VST3-Windows.zip \
             dist/JX-Step-Sequencer-VST3-Linux.tar.gz \
             docs/JX-Step-Sequencer-Manual.pdf \
+            docs/JX-Step-Sequencer-Update-History.pdf \
             --title "JX Step Sequencer $VERSION" \
-            --notes "Built from ${GITHUB_SHA::7}. macOS: run JX-Step-Sequencer-Installer.pkg (VST3 + AU). Windows / Linux: unzip the VST3 into your VST3 folder. Manual: JX-Step-Sequencer-Manual.pdf." \
+            --notes "Built from ${GITHUB_SHA::7}. macOS: run JX-Step-Sequencer-Installer.pkg (VST3 + AU). Windows / Linux: unzip the VST3 into your VST3 folder. Manual: JX-Step-Sequencer-Manual.pdf. What's new: JX-Step-Sequencer-Update-History.pdf." \
             --latest
